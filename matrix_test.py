@@ -1,13 +1,18 @@
 import unittest
+
 import matrix
 
 
 def matrix_to_list(string: str) -> list[list[float]]:
-    return [[float(value) for value in row.split()] for row in string.split('\n')[1:]]
+    string = string.split('\n')
+    if len(string) == 1:
+        return [[0 for _ in range(int(string[0].split()[1]))] for _ in range(int(string[0].split()[0]))]
+
+    return [[float(value) for value in row.split()] for row in string[1:]]
 
 
 class TestSparseMatrix(unittest.TestCase):
-    matrixes = [
+    matrices = [
         "3 3\n"
         "1 0 0\n"
         "0 0 0\n"
@@ -43,6 +48,14 @@ class TestSparseMatrix(unittest.TestCase):
         "2 5\n"
         "1 2 3 4 5\n"
         "6 7 8 9 10"
+
+        "4 4\n"
+        "0 0 0 0\n"
+        "0 0 0 0\n"
+        "0 0 0 0\n"
+        "0 0 0 0",
+
+        "4 4"
     ]
 
     tracers = [
@@ -51,20 +64,22 @@ class TestSparseMatrix(unittest.TestCase):
         38.85,
         65,
         None,
-        None
+        None,
+        0,
+        0
     ]
 
     def test_get_element(self):
-        for test in range(len(self.matrixes)):
-            m = matrix.Matrix(self.matrixes[test])
-            l = matrix_to_list(self.matrixes[test])
+        for test in range(len(self.matrices)):
+            m = matrix.Matrix(self.matrices[test])
+            l = matrix_to_list(self.matrices[test])
             for row in range(1, m.num_rows + 1):
                 for column in range(1, m.num_columns + 1):
                     self.assertEqual(m[row, column], l[row - 1][column - 1])
 
     def test_tracer(self):
-        for test in range(len(self.matrixes)):
-            m = matrix.Matrix(self.matrixes[test])
+        for test in range(len(self.matrices)):
+            m = matrix.Matrix(self.matrices[test])
             if self.tracers[test] is None:
                 self.assertRaises(Exception, m.get_tracer)
             else:
