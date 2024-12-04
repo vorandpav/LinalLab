@@ -3,6 +3,7 @@ class Matrix:
     num_columns: int
     square: bool
     tracer: float
+    determinant: float
 
     values: list[float]
     row_sizes: list[int]
@@ -155,9 +156,83 @@ class Matrix:
         self._calculate_tracer()
         return self.tracer
 
-    def get_transpose(self) -> 'Matrix':
-        transpose_matrix = Matrix(f'{self.num_columns} {self.num_rows}')
-        for row in range(1, self.num_rows + 1):
-            for column in range(1, self.num_columns + 1):
-                transpose_matrix[row, column] = self[column, row]
-        return transpose_matrix
+    def _calculate_determinant(self) -> None:
+        n = self.num_rows
+
+        if n == 1:
+            self.determinant = self[0, 0]
+            return
+        if n == 2:
+            self.determinant = self[0, 0] * self[1, 1] - self[0, 1] * self[1, 0]
+            return
+
+        self.determinant = 1.0
+
+        for i in range(1, n + 1):
+            max_row = i
+            for k in range(i + 1, n + 1):
+                if abs(self[k, i]) > abs(self[max_row, i]):
+                    max_row = k
+
+            if self[max_row, i] == 0:
+                self.determinant = 0
+                return
+
+            if max_row != i:
+                self.determinant *= -1
+                for j in range(1, n + 1):
+                    self[i, j], self[max_row, j] = self[max_row, j], self[i, j]
+
+            self.determinant *= self[i, i]
+            pivot = self[i, i]
+
+            for j in range(i, n + 1):
+                self[i, j] /= pivot
+
+            for k in range(i + 1, n + 1):
+                factor = self[k, i]
+                for j in range(i, n + 1):
+                    self[k, j] -= factor * self[i, j]
+
+    def get_determinant(self) -> float:
+        if not self.square:
+            raise Exception('Matrix is not square')
+
+        self._calculate_determinant()
+        return self.determinant
+
+    def print_determinant_and_invertibility(self) -> None:
+        print(self.get_determinant())
+
+        if self.determinant == 0:
+            print('нет')
+        else:
+            print('да')
+
+
+if __name__ == '__main__':
+    m = Matrix("3 3\n-4 -1 2\n10 4 -1\n8 3 1")
+    print(m.get_list())
+    print("just print\n")
+
+    m = m + 1
+    print(m.get_list())
+    print("+number\n")
+
+    m = m + Matrix("3 3\n-1 -1 -1\n-1 -1 -1\n-1 -1 -1")
+    print(m.get_list())
+    print("+matrix\n")
+
+    m = m * 2
+    print(m.get_list())
+    print("*number\n")
+
+    m = m * Matrix("3 3\n0.5 0 0\n0 0.5 0\n0 0 0.5")
+    print(m.get_list())
+    print("*matrix\n")
+
+    print(m.get_tracer())
+    print("tracer\n")
+
+    m.print_determinant_and_invertibility()
+    print("determinant and invertibility\n")
