@@ -47,7 +47,7 @@ class TestSparseMatrix(unittest.TestCase):
 
         "2 5\n"
         "1 2 3 4 5\n"
-        "6 7 8 9 10"
+        "6 7 8 9 10",
 
         "4 4\n"
         "0 0 0 0\n"
@@ -55,8 +55,21 @@ class TestSparseMatrix(unittest.TestCase):
         "0 0 0 0\n"
         "0 0 0 0",
 
-        "4 4"
+        "4 4",
+
+        "3 3\n"
+        "-4 -1 2\n"
+        "10 4 -1\n"
+        "8 3 1"
     ]
+
+    def test_get_element(self):
+        for test in range(len(self.matrices)):
+            m = matrix.Matrix(self.matrices[test])
+            l = matrix_to_list(self.matrices[test])
+            for row in range(1, m.num_rows + 1):
+                for column in range(1, m.num_columns + 1):
+                    self.assertEqual(l[row - 1][column - 1], m[row, column])
 
     tracers = [
         1.45435,
@@ -66,25 +79,66 @@ class TestSparseMatrix(unittest.TestCase):
         None,
         None,
         0,
-        0
+        0,
+        1
     ]
-
-    def test_get_element(self):
-        for test in range(len(self.matrices)):
-            m = matrix.Matrix(self.matrices[test])
-            l = matrix_to_list(self.matrices[test])
-            for row in range(1, m.num_rows + 1):
-                for column in range(1, m.num_columns + 1):
-                    self.assertEqual(m[row, column], l[row - 1][column - 1])
 
     def test_tracer(self):
         for test in range(len(self.matrices)):
             m = matrix.Matrix(self.matrices[test])
             if self.tracers[test] is None:
-                self.assertRaises(Exception, m.get_tracer)
+                with self.assertRaises(Exception):
+                    _ = m.get_tracer()
             else:
-                self.assertEqual(m.get_tracer(), self.tracers[test])
+                self.assertEqual(self.tracers[test], m.get_tracer())
 
+    matrices_sum = [
+        None,
+        None,
+        "5 5\n"
+        "2 2 3 4 5\n"
+        "6 14 8 9 10\n"
+        "11 12 9.85 14 15\n"
+        "16 17 18 28 20\n"
+        "21 22 23 24 50\n",
+        None,
+        None,
+        None,
+        "4 4\n"
+        "0 0 0 0\n"
+        "0 0 0 0\n"
+        "0 0 0 0\n"
+        "0 0 0 0",
+        None
+    ]
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_matrices_sum(self):
+        for test in range(len(self.matrices) - 1):
+            m1 = matrix.Matrix(self.matrices[test])
+            m2 = matrix.Matrix(self.matrices[test + 1])
+            if self.matrices_sum[test] is None:
+                with self.assertRaises(Exception):
+                    _ = m1 + m2
+            else:
+                self.assertEqual(matrix.Matrix(self.matrices_sum[test]).get_list(), (m1 + m2).get_list())
+
+    determinants = [
+        0,
+        None,
+        -4961.25,
+        0,
+        None,
+        None,
+        0,
+        0,
+        -14
+    ]
+
+    def test_determinant(self):
+        for test in range(len(self.matrices)):
+            m = matrix.Matrix(self.matrices[test])
+            if self.determinants[test] is None:
+                with self.assertRaises(Exception):
+                    m.get_determinant()
+            else:
+                self.assertAlmostEqual(self.determinants[test], m.get_determinant(), 5)
