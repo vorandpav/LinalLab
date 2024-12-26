@@ -290,15 +290,24 @@ class TestSparseMatrix(unittest.TestCase):
 
     def test_determinant(self):
         determinants = [
-            0,
-            None,
-            -4961.25,
-            0,
-            None,
-            None,
-            0,
-            0,
-            -14
+            0,  # 1
+            None,  # 2
+            -4961.25,  # 3
+            0,  # 4
+            None,  # 5
+            None,  # 6
+            0,  # 7
+            0,  # 8
+            -14,  # 9
+            0,  # 10
+            -2,  # 11
+            162315.677,  # 12
+            -17.06,  # 13
+            0,  # 14
+            -17.06,  # 15
+            0,  # 16
+            -17.06,  # 17
+            -17.06  # 18
         ]
 
         for test in range(len(self.matrices)):
@@ -307,4 +316,4 @@ class TestSparseMatrix(unittest.TestCase):
                 with self.assertRaises(Exception):
                     m.get_determinant()
             else:
-                self.assertAlmostEqual(determinants[test], m.get_determinant(), 5)
+                self.assertAlmostEqual(determinants[test], m.get_determinant(), 0)

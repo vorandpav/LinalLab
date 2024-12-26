@@ -287,10 +287,10 @@ class Matrix:
         n = self.num_rows
 
         if n == 1:
-            self.determinant = self[0, 0]
+            self.determinant = self[1, 1]
             return
         if n == 2:
-            self.determinant = self[0, 0] * self[1, 1] - self[0, 1] * self[1, 0]
+            self.determinant = self[1, 1] * self[2, 2] - self[2, 1] * self[1, 2]
             return
 
         self.determinant = 1.0
@@ -320,6 +320,8 @@ class Matrix:
                 factor = self[k, i]
                 for j in range(i, n + 1):
                     self[k, j] -= factor * self[i, j]
+
+        self.determinant = round(self.determinant, self.accuracy)
 
     def get_determinant(self) -> float:
         if not self.square:
