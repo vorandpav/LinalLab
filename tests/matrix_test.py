@@ -268,7 +268,7 @@ class TestSparseMatrix(unittest.TestCase):
 
     def test_get_element(self):
         for test in range(len(self.matrices)):
-            with self.subTest(test=test):
+            with self.subTest(test=test + 1):
                 m = matrix.Matrix(self.matrices[test])
                 l = matrix_to_list(self.matrices[test])
                 for row in range(1, m.num_rows + 1):
@@ -287,7 +287,7 @@ class TestSparseMatrix(unittest.TestCase):
 
     def test_transpose(self):
         for test in range(len(self.matrices)):
-            with self.subTest(test=test):
+            with self.subTest(test=test + 1):
                 m = matrix.Matrix(self.matrices[test])
                 l = matrix_to_list(self.matrices[test])
                 transposed = [[l[j][i] for j in range(len(l))] for i in range(len(l[0]))]
@@ -295,7 +295,7 @@ class TestSparseMatrix(unittest.TestCase):
 
     def test_matrices_sum(self):
         for test in range(len(self.matrices) - 1):
-            with self.subTest(test=test):
+            with self.subTest(test=test + 1):
                 m1 = matrix.Matrix(self.matrices[test])
                 m2 = matrix.Matrix(self.matrices[test + 1])
                 if self.matrices_sum[test] is None:
@@ -306,14 +306,14 @@ class TestSparseMatrix(unittest.TestCase):
 
     def test_matrices_mul(self):
         for test in range(len(self.matrices_mul) - 1):
-            with self.subTest(test=test):
+            with self.subTest(test=test + 1):
                 m1 = matrix.Matrix(self.matrices_mul[test])
                 m2 = matrix.Matrix(self.matrices_mul[test + 1])
                 self.assertEqual(matrix.Matrix(self.matrices_mul_result[test]).get_list(), (m1 * m2).get_list())
 
     def test_determinant(self):
         for test in range(len(self.matrices)):
-            with self.subTest(test=test):
+            with self.subTest(test=test + 1):
                 m = matrix.Matrix(self.matrices[test])
                 if self.determinants[test] is None:
                     with self.assertRaises(Exception):

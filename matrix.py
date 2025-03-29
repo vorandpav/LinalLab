@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+
 class Matrix:
     accuracy: int = 1000
     num_rows: int
@@ -175,6 +178,15 @@ class Matrix:
     def __iadd__(self, other) -> 'Matrix':
         return self + other
 
+    def __sub__(self, other) -> 'Matrix':
+        return self + (-1) * other
+
+    def __rsub__(self, other) -> 'Matrix':
+        return (-1) * self + other
+
+    def __isub__(self, other) -> 'Matrix':
+        return self - other
+
     def transpose(self) -> 'Matrix':
         column_row = [[] for _ in range(self.num_columns)]
         column_value = [[] for _ in range(self.num_columns)]
@@ -266,6 +278,18 @@ class Matrix:
     def __imul__(self, other):
         return self * other
 
+    def __truediv__(self, other):
+        if isinstance(other, Matrix):
+            raise Exception('Matrix division is not supported')
+        else:
+            if other == 0:
+                raise Exception('Division by zero')
+            else:
+                return self * (1 / other)
+
+    def __itruediv__(self, other):
+        return self / other
+
     def get_list(self) -> list[list[float]]:
         return [[self[row + 1, column + 1]
                  for column in range(self.num_columns)]
@@ -321,13 +345,15 @@ class Matrix:
                 for j in range(i, n + 1):
                     self[k, j] -= factor * self[i, j]
 
-        self.determinant = round(self.determinant, self.accuracy)
+        self.determinant = self.determinant
 
     def get_determinant(self) -> float:
         if not self.square:
             raise Exception('Matrix is not square')
 
-        self._calculate_determinant()
+        self_copy = deepcopy(self)
+        self_copy._calculate_determinant()
+        self.determinant = round(self_copy.determinant, self.accuracy)
         return self.determinant
 
     def print_determinant_and_invertibility(self) -> None:
@@ -375,8 +401,14 @@ if __name__ == '__main__':
     print(m.get_tracer())
     print("tracer\n")
 
+    print(m.get_list())
+    print("print\n")
+
     m.print_determinant_and_invertibility()
     print("determinant and invertibility\n")
+
+    print(m.get_list())
+    print("print\n")
 
     m = Matrix("6 6\n"
                "2\n"
