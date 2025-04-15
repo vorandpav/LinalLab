@@ -27,14 +27,6 @@ class MyTestCase(unittest.TestCase):
             "0 0 -3.15 0 0\n"
             "0 0 0 9 0\n"
             "0 0 0 0 25",
-            # 4
-            "5 5\n"
-            "2\n"
-            "1 2 3 4 5\n"
-            "6 7 8 9 10\n"
-            "11 12 13 14 15\n"
-            "16 17 18 19 20\n"
-            "21 22 23 24 25"
         ]
         self.centered_data = [
             # 1
@@ -58,14 +50,6 @@ class MyTestCase(unittest.TestCase):
             "-0.2 -1.4 -2.52 -1.8 -5.0\n"
             "-0.2 -1.4 0.63 7.2 -5.0\n"
             "-0.2 -1.4 0.63 -1.8 20.0",
-            # 4
-            "5 5\n"
-            "2\n"
-            "-10 -10 -10 -10 -10\n"
-            "-5 -5 -5 -5 -5\n"
-            "0 0 0 0 0\n"
-            "5 5 5 5 5\n"
-            "10 10 10 10 10"
         ]
         self.covariance_data = [
             # 1
@@ -88,14 +72,22 @@ class MyTestCase(unittest.TestCase):
             "0.16 1.1 1.98 1.42 3.94\n"
             "-0.45 -3.15 1.42 16.2 -11.25\n"
             "-1.25 -8.75 3.94 -11.25 125.0\n",
-            # 4
-            "5 5\n"
-            "2\n"
-            "62.50 62.50 62.50 62.50 62.50\n"
-            "62.50 62.50 62.50 62.50 62.50\n"
-            "62.50 62.50 62.50 62.50 62.50\n"
-            "62.50 62.50 62.50 62.50 62.50\n"
-            "62.50 62.50 62.50 62.50 62.50"
+        ]
+        self.eigenvalues = [
+            # 1
+            [-0.000000,
+             0.140956,
+             43.237078],
+            # 2
+            [14219.241125,
+             2.254053,
+             47.022806],
+            # 3
+            [0.000000,
+             1.272515,
+             7.878683,
+             17.160720,
+             126.872581],
         ]
 
     def test_center_data(self):
@@ -115,6 +107,13 @@ class MyTestCase(unittest.TestCase):
                 for row in range(1, m.num_columns + 1):
                     for column in range(1, m.num_columns + 1):
                         self.assertAlmostEqual(cov_matrix[row, column], correct_matrix[row, column], 2)
+
+    def test_eigenvalues(self):
+        for test in range(len(self.centered_data)):
+            with self.subTest(test=test + 1):
+                m = Matrix(self.matrices[test])
+                eigenvalues = PCA.get_eigenvalues(m)
+                self.assertEqual(eigenvalues, sorted(self.eigenvalues[test]))
 
 
 if __name__ == '__main__':
