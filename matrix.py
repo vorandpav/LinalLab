@@ -343,12 +343,15 @@ class Matrix:
         return determinant
 
     def print_determinant_and_invertibility(self) -> None:
-        print(self.get_determinant())
+        determinant = self.get_determinant()
 
-        if self.determinant == 0:
+        if determinant == 0:
             print('нет')
         else:
             print('да')
+
+    def __str__(self) -> str:
+        return '\n'.join([' '.join(map(str, row)) for row in self.get_list()])
 
 
 if __name__ == '__main__':
@@ -415,3 +418,5 @@ if __name__ == '__main__':
 
     print(m.column_indices)
     print("column_indices\n")
+
+    print(m)
