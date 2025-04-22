@@ -2,7 +2,7 @@ from copy import deepcopy
 
 
 class Matrix:
-    accuracy: int = 1000
+    accuracy: int = 100
     num_rows: int
     num_columns: int
     square: bool
@@ -11,7 +11,10 @@ class Matrix:
     row_sizes: list[int]
     column_indices: list[int]
 
-    def __init__(self, input_string: str):
+    def __init__(self, input_string: str = None):
+        if input_string is None:
+            return
+
         input_string = input_string.split('\n')
 
         size_string = input_string[0].split()

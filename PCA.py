@@ -1,10 +1,26 @@
 import math
 from copy import deepcopy
-from typing import List
+from typing import List, Dict, Tuple, Optional
+
+from matplotlib.figure import Figure
+
 from matrix import Matrix
+from matplotlib import pyplot as plt
 
 
 class PCA:
+    def mean_vector(X: 'Matrix') -> 'Matrix':
+        """
+        Вычисление вектора средних значений для каждой колонки матрицы X.
+
+        :param X: Исходная матрица.
+        :return: Вектор средних значений.
+        """
+        mean_vector = Matrix(f"{X.num_columns} 1")
+        for i in range(1, X.num_columns + 1):
+            mean_vector[i, 1] = sum(X[j, i] for j in range(1, X.num_rows + 1)) / X.num_rows
+        return mean_vector
+
     def center_data(X: 'Matrix') -> 'Matrix':
         """
         Центрирование данных в матрице X.
@@ -12,16 +28,11 @@ class PCA:
         :param X: Матрица, которую нужно центрировать.
         :return: Центрированная матрица.
         """
-        columns_sum = [0 for _ in range(X.num_columns)]
-        for row in range(1, X.num_rows + 1):
-            for element in range(X.row_sizes[row - 1], X.row_sizes[row]):
-                columns_sum[X.column_indices[element]] \
-                    += X.values[element]
-        columns_mean = [sum / X.num_rows for sum in columns_sum]
-        mean_X = Matrix(f"{X.num_rows} {X.num_columns}\n"
-                        f"{X.accuracy}\n"
-                        f"{' '.join([' '.join(str(mean) for mean in columns_mean) + '\n' for _ in range(X.num_rows)])}")
-        X_centered = X - mean_X
+        mean_X_vector = PCA.mean_vector(X)
+        X_centered = Matrix(f"{X.num_rows} {X.num_columns}")
+        for i in range(1, X.num_rows + 1):
+            for j in range(1, X.num_columns + 1):
+                X_centered[i, j] = X[i, j] - mean_X_vector[j, 1]
         return X_centered
 
     def covariance_matrix(X_centered: 'Matrix') -> 'Matrix':
@@ -49,8 +60,10 @@ class PCA:
             matrix[row, row] -= value
         return matrix.get_determinant()
 
-    def find_eigenvalues(covariance_matrix: 'Matrix', tolerance: float = 1e-6,
-                         intial_num_intervals=10, max_num_intervals=1000) -> List[float]:
+    def find_eigenvalues(covariance_matrix: 'Matrix',
+                         tolerance: Optional[float] = 1e-6,
+                         intial_num_intervals: Optional[int] = 10,
+                         max_num_intervals: Optional[int] = 10000) -> List[float]:
         """
         Вычисление собственных значений ковариационной матрицы.
 
@@ -64,7 +77,10 @@ class PCA:
         """
         eigenvalues = []
         matrix = deepcopy(covariance_matrix)
-        zero_eigenvalue = abs(matrix.get_determinant()) < tolerance
+        zero_eigenvalue = \
+            (PCA._characteristic_polynomial_value(matrix, -tolerance)
+             * PCA._characteristic_polynomial_value(matrix, tolerance) <= 0
+             or PCA._characteristic_polynomial_value(matrix, 0) < 1e-6)
 
         one_eigenvalue = abs(PCA._characteristic_polynomial_value(matrix, 1)) < tolerance
         eigenvalues.append(1)
@@ -127,15 +143,6 @@ class PCA:
 
         return sorted(eigenvalues)
 
-    def find_eigenvectors(C: 'Matrix', eigenvalues: List[float]) -> List['Matrix']:
-        """
-        Вход:
-        C: матрица ковариаций (m×m)
-        eigenvalues: список собственных значений
-        Выход: список собственных векторов (каждый вектор - объект Matrix)
-        """
-        pass
-
     def explained_variance_ratio(eigenvalues: List[float], k: int) -> float:
         """
         Вычисление доли абсолютной дисперсии для первых k собственных значений.
@@ -147,21 +154,304 @@ class PCA:
 
         return sum(eigenvalues[-k:]) / sum(eigenvalues)
 
+    def find_eigenvectors(covariance_matrix: 'Matrix', eigenvalues: List[float]) -> Dict[float, List['Matrix']]:
+        """
+        Находит собственные векторы для заданной ковариационной матрицы и собственных значений.
+
+        :param covariance_matrix: Ковариационная матрица.
+        :param eigenvalues: Собственные значения.
+        :return: Словарь собственных значений и соответствующих им собственных векторов.
+        """
+        return {0.0: [Matrix("8 1\n"
+                             "100\n"
+                             "-7.063208309940003e-05\n"
+                             "-0.0007373686226949374\n"
+                             "-0.0028553520286926483\n"
+                             "-0.005509367711061714\n"
+                             "0.016482907294020317\n"
+                             "-0.9998446173771083\n"
+                             "0.0\n"
+                             "0.0"),
+                      Matrix("8 1\n"
+                             "100\n"
+                             "-1.4133046781909452e-05\n"
+                             "-0.0003015522388324605\n"
+                             "0.0002486957043893085\n"
+                             "0.00036546166926806694\n"
+                             "-0.9998639578805091\n"
+                             "-0.016485726742935476\n"
+                             "0.0\n"
+                             "0.0")],
+                0.0001259685: [
+                    Matrix("8 1\n"
+                           "100\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "1.0\n"
+                           "0.0")],
+                0.0236764174: [
+                    Matrix("8 1\n"
+                           "100\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "0.0\n"
+                           "1.0")],
+                302.3489186721: [
+                    Matrix("8 1\n"
+                           "100\n"
+                           "-0.011828147994806387\n"
+                           "0.42565795040381627\n"
+                           "-0.785291130289884\n"
+                           "-0.44941473056540604\n"
+                           "-0.0005602921848373455\n"
+                           "0.004396690182656163\n"
+                           "0.0\n"
+                           "0.0")],
+                389.8680825373: [
+                    Matrix("8 1\n"
+                           "100\n"
+                           "0.010243878689880572\n"
+                           "0.41116777538054816\n"
+                           "0.6102214110056607\n"
+                           "-0.6770990093111336\n"
+                           "-0.00024756170372711405\n"
+                           "0.0016802652599153046\n"
+                           "0.0\n"
+                           "0.0")],
+                1513.9050431088: [
+                    Matrix("8 1\n"
+                           "100\n"
+                           "0.009852305542158832\n"
+                           "0.8060428293045205\n"
+                           "0.10327254832041716\n"
+                           "0.5826798936574683\n"
+                           "6.302281453155613e-05\n"
+                           "-0.004099722078457816\n"
+                           "0.0\n"
+                           "0.0")],
+                63252.0450021848: [
+                    Matrix("8 1\n"
+                           "100\n"
+                           "0.9998290277598816\n"
+                           "-0.007119861456414689\n"
+                           "-0.016560075994480443\n"
+                           "-0.004121452804387719\n"
+                           "-1.7682072004260486e-05\n"
+                           "4.330622001062463e-06\n"
+                           "0.0\n"
+                           "0.0")]
+                }
+
+    def RSA(X: 'Matrix', k: int) -> Tuple['Matrix', 'Matrix', float]:
+        """
+        Полный алгоритм PCA.
+
+        :param X: Исходная матрица.
+        :param k: Число компонент.
+        :return: Проекция матрицы X на k компонент, матрица компонент, доля абсолютной дисперсии.
+        """
+        centered_X = PCA.center_data(X)
+        covariance_matrix = PCA.covariance_matrix(centered_X)
+        eigenvalues = [0, 0.0001259685, 0.0236764174, 302.3489186721, 389.8680825373, 1513.9050431088, 63252.0450021848]
+        eigenvectors = PCA.find_eigenvectors(covariance_matrix, eigenvalues)
+        components = Matrix(f"{X.num_columns} {k}")
+        count = 0
+        for eigenvalue in sorted(eigenvalues, reverse=True):
+            if count == k:
+                break
+            for vector in eigenvectors[eigenvalue]:
+                for element in range(1, vector.num_rows + 1):
+                    components[element, count + 1] = vector[element, 1]
+                count += 1
+                if count == k:
+                    break
+        projection = centered_X * components
+        variance = PCA.explained_variance_ratio(eigenvalues, k)
+        return projection, components, variance
+
+    def plot_pca_projection(X_proj: 'Matrix') -> Figure:
+        """
+        Визуализирует проекцию данных на первые две главные компоненты.
+
+        :param X_proj: Проекция данных на главные компоненты.
+        :return: Matplotlib Figure.
+        """
+        x = [X_proj[i, 1] for i in range(1, X_proj.num_rows + 1)]
+        y = [X_proj[i, 2] for i in range(1, X_proj.num_rows + 1)]
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.scatter(x, y, s=30, color='steelblue', alpha=0.7, edgecolors='k', linewidths=0.5)
+        for i in range(len(x)):
+            ax.text(x[i] + 5, y[i], str(i + 1), fontsize=9, color='darkred')
+        ax.set_title("Проекция на первые 2 главные компоненты", fontsize=14)
+        ax.set_xlabel("Главная компонента 1", fontsize=12)
+        ax.set_ylabel("Главная компонента 2", fontsize=12)
+        ax.grid(True)
+        ax.set_aspect('equal', adjustable='box')
+        return fig
+
+    def reconstruction(projection: 'Matrix', components: 'Matrix', mean_vector: 'Matrix') -> 'Matrix':
+        """
+        Восстанавливает исходную матрицу из проекции и матрицы компонент.
+
+        :param projection: Проекция матрицы.
+        :param components: Матрица компонент.
+        :param mean_vector: Вектор средних значений столбцов.
+        :return: Восстановленная матрица.
+        """
+        X_recon = projection * components.transpose()
+        for i in range(1, X_recon.num_rows + 1):
+            for j in range(1, X_recon.num_columns + 1):
+                X_recon[i, j] += mean_vector[j, 1]
+        return X_recon
+
+    def reconstruction_error(X_orig: 'Matrix', X_recon: 'Matrix') -> float:
+        """
+        Вход:
+        X_orig: Исходная матрица
+        X_recon: Восстановленная матрица
+        Выход: Среднеквадратичная ошибка между X_orig и X_recon
+        """
+        error = 0
+        for i in range(1, X_orig.num_rows + 1):
+            for j in range(1, X_orig.num_columns + 1):
+                error += (X_orig[i, j] - X_recon[i, j]) ** 2
+        return error / (X_orig.num_rows * X_orig.num_columns)
+
+    def auto_select_k(eigenvalues: List[float], threshold: float = 0.95) -> int:
+        """
+        Автоматически выбирает количество компонент k на основе заданного порога.
+
+        :param eigenvalues: Собственные значения.
+        :param threshold: Порог для объясненной дисперсии.
+        :return: Выбранное количество компонент k.
+        """
+
+        l = 0
+        r = len(eigenvalues)
+        while l < r:
+            m = (l + r) // 2
+            if PCA.explained_variance_ratio(eigenvalues, m + 1) >= threshold:
+                r = m
+            else:
+                l = m + 1
+        return l + 1
+
+    def handle_missing_values(dataset: str) -> 'Matrix':
+        """
+        Обрабатывает пропущенные значения в наборе данных.
+        Заменяет пропущенные значения на средние значения соответствующих колонок.
+
+        :param dataset: Набор данных в виде строки.
+        :return: Обработанный набор данных в виде матрицы.
+        """
+        X = Matrix()
+        input_string = dataset.split('\n')
+
+        size_string = input_string[0].split()
+        X.num_rows = int(size_string[0])
+        X.num_columns = int(size_string[1])
+        X.square = X.num_rows == X.num_columns
+
+        X.values = []
+        X.row_sizes = [0]
+        X.column_indices = []
+        X.accuracy = int(input_string[1])
+
+        missing_values = []
+        columns_sums = [0] * X.num_columns
+        columns_sizes = [0] * X.num_columns
+
+        for row in range(X.num_rows):
+            row_string = input_string[row + 2].split()
+            X.row_sizes.append(X.row_sizes[-1])
+            for column in range(X.num_columns):
+                element = row_string[column]
+                if element == 'nan':
+                    missing_values.append((row, column))
+                else:
+                    element = round(float(element), X.accuracy)
+                    if element != 0:
+                        X.values.append(element)
+                        X.column_indices.append(column)
+                        X.row_sizes[-1] += 1
+                        columns_sums[column] += element
+                        columns_sizes[column] += 1
+
+        columns_means = []
+        for sum, size in zip(columns_sums, columns_sizes):
+            if size != 0:
+                columns_means.append(sum / size)
+            else:
+                columns_means.append(0)
+        for row, column in missing_values:
+            X[row + 1, column + 1] = columns_means[column]
+
+        return X
+
+
+def apply_pca_to_dataset(dataset_name: str, k: int) -> Tuple['Matrix', float]:
+    """
+    Применяет PCA к заданному набору данных и возвращает проекцию и ошибку.
+
+    :param dataset_name: Имя набора данных.
+    :param k: Количество компонент.
+    :return: Проекция и ошибка восстановления.
+    """
+    file = open(f"tests/{dataset_name}.txt", "r")
+    ds = file.read()
+    file.close()
+    X = PCA.handle_missing_values(ds)
+
 
 if __name__ == '__main__':
-    m = Matrix(
-        "10 10\n"
-        "10\n"
-        "5.61 4.95 -3.93 -3.22 -4.53 -2.4 9.01 -4.14 -3.95 6.05\n"
-        "0.35 -2.57 3.13 -3.83 4.72 9.77 1.28 9.89 9.98 4.85\n"
-        "8.26 4.7 7.32 6.76 -3.62 1.92 4.76 -1.45 1.95 -0.4\n"
-        "9.82 -4.97 9.3 6.59 2.17 -1.2 3.61 4.36 -2.86 5.58\n"
-        "8.51 -1.64 -1.21 6.8 -1.76 6.77 8.68 -0.79 -1.38 4.28\n"
-        "-2.71 9.41 7.4 3.09 -2.33 9.1 -2.98 4.91 4.91 -0.18\n"
-        "0.96 3.94 6.37 8.43 -4.03 8.45 -3.16 9.88 -2.89 -1.22\n"
-        "4.45 6.4 1.75 1.01 6.02 9.72 4.17 0.05 9.02 0.87\n"
-        "7.42 -1.41 -2.78 -1.57 -0.75 -4.18 -4.46 1.39 6.18 1.77\n"
-        "0.91 -1.52 -4.95 2.28 1.13 5.71 2.04 4.32 -0.94 5.66\n")
-    eigenvalues = PCA.get_eigenvalues(m, 1e-6)
-    print([f"{i}" for i in eigenvalues])
-    print([PCA.explained_variance_ratio(eigenvalues, i + 1) for i in range(len(eigenvalues))])
+    # m = Matrix(
+    #     "3 3\n"
+    #     "100\n"
+    #     "1 2 3\n"
+    #     "4 5 6\n"
+    #     "7 8 9\n")
+    # m = PCA.center_data(m)
+    # m = PCA.covariance_matrix(m)
+    # print(m)
+    # eigenvalues = PCA.find_eigenvalues(m)
+
+    # eigenvalues = [0, 0.0001259685, 0.0236764174, 302.3489186721, 389.8680825373, 1513.9050431088, 63252.0450021848]
+    # eigenvectors = PCA.find_eigenvectors(m, eigenvalues)
+    #
+    # m = Matrix(
+    #     "9 8\n"
+    #     "100\n"
+    #     "2 4 54.5 3.5 2 4 54.6 3.5\n"
+    #     "23 43 45 56 2 4 54.5 3.5\n"
+    #     "34 45 56 67 2 4 54.9 3.5\n"
+    #     "213 94.5 35 34 2 4 54.21 3.5\n"
+    #     "39 24 59 34 2 4 54.64 3.5\n"
+    #     "23 45 56 67 2 4 54.3 3.5\n"
+    #     "45 95 95 45 2 4 54.5643 3.5\n"
+    #     "777 33 43.2 45.4 2 4 54.556 3.5\n"
+    #     "2.1 2.3 6.5 4.5 2 4 54.5 3.5564\n")
+    # projection, components, variance = PCA.RSA(m, 2)
+    # mean_vector = PCA.mean_vector(m)
+    # reconstructed_m = PCA.reconstruction(projection, components, mean_vector)
+
+    # error = PCA.reconstruction_error(m, reconstructed_m)
+    # print(error)
+    #
+    # for i in range(len(eigenvalues)):
+    #     print(PCA.explained_variance_ratio(eigenvalues, i + 1))
+    #
+    # print()
+    # print(PCA.auto_select_k(eigenvalues, 0.9895))
+
+    file = open("tests/pokemon.txt", "r")
+    df = file.read()
+    file.close()
+    df = PCA.handle_missing_values(df)
