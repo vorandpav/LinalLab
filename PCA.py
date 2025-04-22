@@ -1,4 +1,5 @@
 import math
+import random
 from copy import deepcopy
 from typing import List, Dict, Tuple, Optional
 from matrix import Matrix
@@ -48,7 +49,7 @@ class PCA:
 
         return covariance_matrix
 
-    def _characteristic_polynomial_value(covariance_matrix: 'Matrix', value: float) -> float:
+    def characteristic_polynomial_value(covariance_matrix: 'Matrix', value: float) -> float:
         """
         Вычисление значения характеристического многочлена для заданного значения.
 
@@ -63,7 +64,7 @@ class PCA:
         return matrix.get_determinant()
 
     def find_eigenvalues(covariance_matrix: 'Matrix',
-                         tolerance: Optional[float] = 1e-6,
+                         tolerance: Optional[float] = 1e-10,
                          intial_num_intervals: Optional[int] = 10,
                          max_num_intervals: Optional[int] = 10000) -> List[float]:
         """
@@ -81,10 +82,10 @@ class PCA:
         matrix = deepcopy(covariance_matrix)
 
         zero_eigenvalue = \
-            (PCA._characteristic_polynomial_value(matrix, -tolerance)
-             * PCA._characteristic_polynomial_value(matrix, tolerance) <= 0
-             or PCA._characteristic_polynomial_value(matrix, 0) < 1e-6)
-        one_eigenvalue = abs(PCA._characteristic_polynomial_value(matrix, 1)) < tolerance
+            (PCA.characteristic_polynomial_value(matrix, -tolerance)
+             * PCA.characteristic_polynomial_value(matrix, tolerance) <= 0
+             or PCA.characteristic_polynomial_value(matrix, 0) < 1e-6)
+        one_eigenvalue = abs(PCA.characteristic_polynomial_value(matrix, 1)) < tolerance
         eigenvalues.append(1)
 
         num_intervals = intial_num_intervals
@@ -114,8 +115,8 @@ class PCA:
                         break
                     low = lower_bound + interval * interval_length
                     high = lower_bound + (interval + 1) * interval_length
-                    characteristic_value_low = PCA._characteristic_polynomial_value(matrix, low)
-                    characteristic_value_high = PCA._characteristic_polynomial_value(matrix, high)
+                    characteristic_value_low = PCA.characteristic_polynomial_value(matrix, low)
+                    characteristic_value_high = PCA.characteristic_polynomial_value(matrix, high)
 
                     if characteristic_value_low == 0:
                         eigenvalues.append(round(low, int(math.log10(1 / tolerance))))
@@ -129,7 +130,7 @@ class PCA:
                             low, high = high, low
                         eigenvalue = (low + high) / 2
                         while True:
-                            characteristic_value = PCA._characteristic_polynomial_value(matrix, eigenvalue)
+                            characteristic_value = PCA.characteristic_polynomial_value(matrix, eigenvalue)
                             if abs(high - low) < tolerance / 10:
                                 eigenvalues.append(round(eigenvalue, int(math.log10(1 / tolerance))))
                                 eigenvalues.sort()
@@ -353,6 +354,28 @@ class PCA:
                            "0.0")]
                 }
 
+    def get_components(eigenvectors: Dict[float, List['Matrix']], k: int) -> 'Matrix':
+        """
+        Получает матрицу компонент из собственных векторов.
+
+        :param eigenvectors: Словарь собственных значений и соответствующих им собственных векторов.
+        :param k: Количество компонент.
+        :return: Матрица компонент.
+        """
+        components = Matrix(f"{eigenvectors[next(iter(eigenvectors))][0].num_rows} {k}")
+        count = 0
+        for eigenvalue in sorted(eigenvectors.keys(), reverse=True):
+            if count == k:
+                break
+            for vector in eigenvectors[eigenvalue]:
+                for element in range(1, vector.num_rows + 1):
+                    components[element, count + 1] = vector[element, 1]
+                count += 1
+                if count == k:
+                    break
+
+        return components
+
     def RSA(X: 'Matrix', k: int) -> Tuple['Matrix', 'Matrix', float]:
         """
         Полный алгоритм PCA.
@@ -363,21 +386,9 @@ class PCA:
         """
         centered_X = PCA.center_data(X)
         covariance_matrix = PCA.covariance_matrix(centered_X)
-        eigenvalues = [0, 0.0001259685, 0.0236764174, 302.3489186721, 389.8680825373, 1513.9050431088, 63252.0450021848]
+        eigenvalues = PCA.find_eigenvalues(covariance_matrix)
         eigenvectors = PCA.find_eigenvectors(covariance_matrix, eigenvalues)
-
-        components = Matrix(f"{X.num_columns} {k}")
-        count = 0
-        for eigenvalue in sorted(eigenvalues, reverse=True):
-            if count == k:
-                break
-            for vector in eigenvectors[eigenvalue]:
-                for element in range(1, vector.num_rows + 1):
-                    components[element, count + 1] = vector[element, 1]
-                count += 1
-                if count == k:
-                    break
-
+        components = PCA.get_components(eigenvectors, k)
         projection = centered_X * components
         variance = PCA.explained_variance_ratio(eigenvalues, k)
 
@@ -507,6 +518,57 @@ class PCA:
 
         return X
 
+    def add_noise_and_compare(X: 'Matrix', noise_level: float = 0.1):
+        """
+        Добавляет шум к данным и сравнивает восстановленные данные с оригинальными.
+
+        :param X: Исходная матрица.
+        :param noise_level: Уровень шума (доля от стандартного отклонения).
+        """
+        mean_vector = PCA.mean_vector(X)
+        standard_deviation = [0] * X.num_columns
+        for i in range(1, X.num_rows + 1):
+            for j in range(1, X.num_columns + 1):
+                standard_deviation[j - 1] += (X[i, j] - mean_vector[j, 1]) ** 2
+        standard_deviation = [math.sqrt(sd / X.num_rows) for sd in standard_deviation]
+
+        noise = Matrix(f"{X.num_rows} {X.num_columns}")
+        for i in range(1, X.num_rows + 1):
+            for j in range(1, X.num_columns + 1):
+                noise[i, j] = random.uniform(-noise_level * standard_deviation[j - 1],
+                                             noise_level * standard_deviation[j - 1])
+
+        noisy_X = X + noise
+        noisy_centred_X = PCA.center_data(noisy_X)
+        noisy_covariance_matrix = PCA.covariance_matrix(noisy_centred_X)
+        noisy_eigenvalues = PCA.find_eigenvalues(noisy_covariance_matrix)
+        noisy_eigenvectors = PCA.find_eigenvectors(noisy_covariance_matrix, noisy_eigenvalues)
+        noisy_eigenvectors_count = sum([len(v) for v in noisy_eigenvectors.values()])
+        noisy_mean_vector = PCA.mean_vector(noisy_X)
+
+        centered_X = PCA.center_data(X)
+        covariance_matrix = PCA.covariance_matrix(centered_X)
+        eigenvalues = PCA.find_eigenvalues(covariance_matrix)
+        eigenvectors = PCA.find_eigenvectors(covariance_matrix, eigenvalues)
+        eigenvectors_count = sum([len(v) for v in eigenvectors.values()])
+        mean_vector = PCA.mean_vector(X)
+
+        for k in range(1, min(eigenvectors_count, noisy_eigenvectors_count) + 1):
+            noisy_components = PCA.get_components(noisy_eigenvectors, k)
+            noisy_projection = noisy_centred_X * noisy_components
+            noisy_reconstructed_X = PCA.reconstruction(noisy_projection, noisy_components, noisy_mean_vector)
+            noisy_error_from_noisy = PCA.reconstruction_error(noisy_X, noisy_reconstructed_X)
+            noisy_error = PCA.reconstruction_error(X, noisy_reconstructed_X)
+
+            components = PCA.get_components(eigenvectors, k)
+            projection = centered_X * components
+            reconstructed_X = PCA.reconstruction(projection, components, mean_vector)
+            error = PCA.reconstruction_error(X, reconstructed_X)
+
+            print(f"Компоненты: {k}, Ошибка восстановления (оригинал): {error}, "
+                  f"Ошибка восстановления (шум): {noisy_error}, "
+                  f"Ошибка восстановления (шум с шумом): {noisy_error_from_noisy}")
+
     def apply_pca_to_dataset(dataset_name: str, k: int) -> Tuple['Matrix', float]:
         """
         Применяет PCA к заданному набору данных и возвращает проекцию и ошибку.
@@ -518,10 +580,7 @@ class PCA:
         file = open(f"tests/{dataset_name}.txt", "r")
         ds = file.read()
         file.close()
-
         X = PCA.handle_missing_values(ds)
-        X = PCA.center_data(X)
-        X = PCA.covariance_matrix(X)
 
         projection, components, variance = PCA.RSA(X, k)
         mean_vector = PCA.mean_vector(X)
@@ -544,35 +603,33 @@ if __name__ == '__main__':
     # print(m)
     # eigenvalues = PCA.find_eigenvalues(m)
 
-    # eigenvalues = [0, 0.0001259685, 0.0236764174, 302.3489186721, 389.8680825373, 1513.9050431088, 63252.0450021848]
+    eigenvalues = [0, 0.0001259685, 0.0236764174, 302.3489186721, 389.8680825373, 1513.9050431088, 63252.0450021848]
     # eigenvectors = PCA.find_eigenvectors(m, eigenvalues)
     #
-    # m = Matrix(
-    #     "9 8\n"
-    #     "100\n"
-    #     "2 4 54.5 3.5 2 4 54.6 3.5\n"
-    #     "23 43 45 56 2 4 54.5 3.5\n"
-    #     "34 45 56 67 2 4 54.9 3.5\n"
-    #     "213 94.5 35 34 2 4 54.21 3.5\n"
-    #     "39 24 59 34 2 4 54.64 3.5\n"
-    #     "23 45 56 67 2 4 54.3 3.5\n"
-    #     "45 95 95 45 2 4 54.5643 3.5\n"
-    #     "777 33 43.2 45.4 2 4 54.556 3.5\n"
-    #     "2.1 2.3 6.5 4.5 2 4 54.5 3.5564\n")
-    # projection, components, variance = PCA.RSA(m, 2)
-    # mean_vector = PCA.mean_vector(m)
-    # reconstructed_m = PCA.reconstruction(projection, components, mean_vector)
+    m = Matrix(
+        "9 8\n"
+        "100\n"
+        "2 4 54.5 3.5 2 4 54.6 3.5\n"
+        "23 43 45 56 2 4 54.5 3.5\n"
+        "34 45 56 67 2 4 54.9 3.5\n"
+        "213 94.5 35 34 2 4 54.21 3.5\n"
+        "39 24 59 34 2 4 54.64 3.5\n"
+        "23 45 56 67 2 4 54.3 3.5\n"
+        "45 95 95 45 2 4 54.5643 3.5\n"
+        "777 33 43.2 45.4 2 4 54.556 3.5\n"
+        "2.1 2.3 6.5 4.5 2 4 54.5 3.5564\n")
+    projection, components, variance = PCA.RSA(m, 2)
+    mean_vector = PCA.mean_vector(m)
+    reconstructed_m = PCA.reconstruction(projection, components, mean_vector)
 
-    # error = PCA.reconstruction_error(m, reconstructed_m)
-    # print(error)
+    error = PCA.reconstruction_error(m, reconstructed_m)
+    print(error)
     #
     # for i in range(len(eigenvalues)):
     #     print(PCA.explained_variance_ratio(eigenvalues, i + 1))
     #
     # print()
     # print(PCA.auto_select_k(eigenvalues, 0.9895))
+    projection, error = PCA.apply_pca_to_dataset('mytest', 2)
 
-    file = open("tests/pokemon.txt", "r")
-    df = file.read()
-    file.close()
-    df = PCA.handle_missing_values(df)
+    print(error)
