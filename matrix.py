@@ -1,17 +1,20 @@
+from copy import deepcopy
+
+
 class Matrix:
-    accuracy: int = 1000
+    accuracy: int = 100
     num_rows: int
     num_columns: int
     square: bool
-
-    tracer: float
-    determinant: float
 
     values: list[float]
     row_sizes: list[int]
     column_indices: list[int]
 
-    def __init__(self, input_string: str):
+    def __init__(self, input_string: str = None):
+        if input_string is None:
+            return
+
         input_string = input_string.split('\n')
 
         size_string = input_string[0].split()
@@ -175,6 +178,15 @@ class Matrix:
     def __iadd__(self, other) -> 'Matrix':
         return self + other
 
+    def __sub__(self, other) -> 'Matrix':
+        return self + (-1) * other
+
+    def __rsub__(self, other) -> 'Matrix':
+        return (-1) * self + other
+
+    def __isub__(self, other) -> 'Matrix':
+        return self - other
+
     def transpose(self) -> 'Matrix':
         column_row = [[] for _ in range(self.num_columns)]
         column_value = [[] for _ in range(self.num_columns)]
@@ -266,77 +278,83 @@ class Matrix:
     def __imul__(self, other):
         return self * other
 
+    def __truediv__(self, other):
+        if isinstance(other, Matrix):
+            raise Exception('Matrix division is not supported')
+        else:
+            if other == 0:
+                raise Exception('Division by zero')
+            else:
+                return self * (1 / other)
+
+    def __itruediv__(self, other):
+        return self / other
+
     def get_list(self) -> list[list[float]]:
         return [[self[row + 1, column + 1]
                  for column in range(self.num_columns)]
                 for row in range(self.num_rows)]
 
-    def _calculate_tracer(self) -> None:
-        self.tracer = 0
-        for row in range(self.num_rows):
-            self.tracer += self[row + 1, row + 1]
-
     def get_tracer(self) -> float:
         if not self.square:
             raise Exception('Matrix is not square')
 
-        self._calculate_tracer()
-        return self.tracer
-
-    def _calculate_determinant(self) -> None:
-        n = self.num_rows
-
-        if n == 1:
-            self.determinant = self[1, 1]
-            return
-        if n == 2:
-            self.determinant = self[1, 1] * self[2, 2] - self[2, 1] * self[1, 2]
-            return
-
-        self.determinant = 1.0
-
-        for i in range(1, n + 1):
-            max_row = i
-            for k in range(i + 1, n + 1):
-                if abs(self[k, i]) > abs(self[max_row, i]):
-                    max_row = k
-
-            if self[max_row, i] == 0:
-                self.determinant = 0
-                return
-
-            if max_row != i:
-                self.determinant *= -1
-                for j in range(1, n + 1):
-                    self[i, j], self[max_row, j] = self[max_row, j], self[i, j]
-
-            self.determinant *= self[i, i]
-            pivot = self[i, i]
-
-            for j in range(i, n + 1):
-                self[i, j] /= pivot
-
-            for k in range(i + 1, n + 1):
-                factor = self[k, i]
-                for j in range(i, n + 1):
-                    self[k, j] -= factor * self[i, j]
-
-        self.determinant = round(self.determinant, self.accuracy)
+        tracer = 0
+        for row in range(self.num_rows):
+            tracer += self[row + 1, row + 1]
+        return tracer
 
     def get_determinant(self) -> float:
         if not self.square:
             raise Exception('Matrix is not square')
 
-        self._calculate_determinant()
-        return self.determinant
+        self_copy = deepcopy(self)
+        n = self.num_rows
+
+        if n == 1:
+            return self_copy[1, 1]
+        if n == 2:
+            return self_copy[1, 1] * self_copy[2, 2] - self_copy[2, 1] * self_copy[1, 2]
+
+        determinant = 1.0
+
+        for i in range(1, n + 1):
+            max_row = i
+            for k in range(i + 1, n + 1):
+                if abs(self_copy[k, i]) > abs(self_copy[max_row, i]):
+                    max_row = k
+
+            if self_copy[max_row, i] == 0:
+                return 0
+
+            if max_row != i:
+                determinant *= -1
+                for j in range(1, n + 1):
+                    self_copy[i, j], self_copy[max_row, j] = self_copy[max_row, j], self_copy[i, j]
+
+            determinant *= self_copy[i, i]
+            pivot = self_copy[i, i]
+
+            for j in range(i, n + 1):
+                self_copy[i, j] /= pivot
+
+            for k in range(i + 1, n + 1):
+                factor = self_copy[k, i]
+                for j in range(i, n + 1):
+                    self_copy[k, j] -= factor * self_copy[i, j]
+
+        return determinant
 
     def print_determinant_and_invertibility(self) -> None:
-        print(self.get_determinant())
+        determinant = self.get_determinant()
 
-        if self.determinant == 0:
+        if determinant == 0:
             print('нет')
         else:
             print('да')
+
+    def __str__(self) -> str:
+        return '\n'.join([' '.join(map(str, row)) for row in self.get_list()])
 
 
 if __name__ == '__main__':
@@ -375,8 +393,14 @@ if __name__ == '__main__':
     print(m.get_tracer())
     print("tracer\n")
 
+    print(m.get_list())
+    print("print\n")
+
     m.print_determinant_and_invertibility()
     print("determinant and invertibility\n")
+
+    print(m.get_list())
+    print("print\n")
 
     m = Matrix("6 6\n"
                "2\n"
@@ -397,3 +421,5 @@ if __name__ == '__main__':
 
     print(m.column_indices)
     print("column_indices\n")
+
+    print(m)
