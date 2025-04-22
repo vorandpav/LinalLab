@@ -1,11 +1,9 @@
 import math
 from copy import deepcopy
 from typing import List, Dict, Tuple, Optional
-
-from matplotlib.figure import Figure
-
 from matrix import Matrix
 from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 
 
 class PCA:
@@ -19,6 +17,7 @@ class PCA:
         mean_vector = Matrix(f"{X.num_columns} 1")
         for i in range(1, X.num_columns + 1):
             mean_vector[i, 1] = sum(X[j, i] for j in range(1, X.num_rows + 1)) / X.num_rows
+
         return mean_vector
 
     def center_data(X: 'Matrix') -> 'Matrix':
@@ -33,6 +32,7 @@ class PCA:
         for i in range(1, X.num_rows + 1):
             for j in range(1, X.num_columns + 1):
                 X_centered[i, j] = X[i, j] - mean_X_vector[j, 1]
+
         return X_centered
 
     def covariance_matrix(X_centered: 'Matrix') -> 'Matrix':
@@ -45,6 +45,7 @@ class PCA:
         X_centered_transposed = X_centered.transpose()
         covariance_matrix = X_centered_transposed * X_centered
         covariance_matrix /= X_centered.num_rows - 1
+
         return covariance_matrix
 
     def _characteristic_polynomial_value(covariance_matrix: 'Matrix', value: float) -> float:
@@ -58,6 +59,7 @@ class PCA:
         matrix = deepcopy(covariance_matrix)
         for row in range(1, matrix.num_rows + 1):
             matrix[row, row] -= value
+
         return matrix.get_determinant()
 
     def find_eigenvalues(covariance_matrix: 'Matrix',
@@ -77,11 +79,11 @@ class PCA:
         """
         eigenvalues = []
         matrix = deepcopy(covariance_matrix)
+
         zero_eigenvalue = \
             (PCA._characteristic_polynomial_value(matrix, -tolerance)
              * PCA._characteristic_polynomial_value(matrix, tolerance) <= 0
              or PCA._characteristic_polynomial_value(matrix, 0) < 1e-6)
-
         one_eigenvalue = abs(PCA._characteristic_polynomial_value(matrix, 1)) < tolerance
         eigenvalues.append(1)
 
@@ -114,12 +116,14 @@ class PCA:
                     high = lower_bound + (interval + 1) * interval_length
                     characteristic_value_low = PCA._characteristic_polynomial_value(matrix, low)
                     characteristic_value_high = PCA._characteristic_polynomial_value(matrix, high)
+
                     if characteristic_value_low == 0:
                         eigenvalues.append(round(low, int(math.log10(1 / tolerance))))
                         continue
                     if characteristic_value_high == 0:
                         eigenvalues.append(round(high, int(math.log10(1 / tolerance))))
                         continue
+
                     if characteristic_value_low * characteristic_value_high < 0:
                         if characteristic_value_low > 0:
                             low, high = high, low
@@ -136,6 +140,7 @@ class PCA:
                                 low = eigenvalue
                             eigenvalue = (low + high) / 2
             num_intervals *= 10
+
         if zero_eigenvalue:
             eigenvalues.append(0)
         if not one_eigenvalue:
@@ -153,6 +158,104 @@ class PCA:
         """
 
         return sum(eigenvalues[-k:]) / sum(eigenvalues)
+
+    def gauss_solver(A: 'Matrix', b: 'Matrix') -> List['Matrix']:
+        order = list(range(A.num_rows))
+
+        for i in range(A.num_rows - 1):
+
+            max_value = 0.0
+            col = i - 1
+            while round(abs(max_value), A.accuracy) == 0.0 and col != A.num_rows:
+                col += 1
+                for j in range(i, A.num_rows):
+                    value = A[order[j] + 1, col + 1]
+                    if abs(value) > abs(max_value):
+                        max_value = value
+                        pivot_row = j
+
+            if round(max_value, A.accuracy) == 0.0:
+                continue
+
+            if order[pivot_row] != i:
+                order[i], order[pivot_row] = order[pivot_row], order[i]
+
+            for j in range(i + 1, A.num_rows):
+                factor = A[order[j] + 1, col + 1] / max_value
+                if round(factor, A.accuracy) == 0.0:
+                    continue
+
+                for k in range(col, A.num_rows):
+                    A[order[j] + 1, k + 1] -= factor * A[order[i] + 1, k + 1]
+
+                b[order[j] + 1, 1] -= factor * b[order[i] + 1, 1]
+
+        amt_null_rows = 0
+        mn_null_row = A.num_rows
+        for i in range(A.num_rows):
+            flag_null_row = True
+            for j in range(i, A.num_columns):
+                if A[order[i] + 1, j + 1] != 0:
+                    flag_null_row = False
+                    break
+            if flag_null_row:
+                mn_null_row = min(i, mn_null_row)
+                amt_null_rows += 1
+
+        if amt_null_rows == 0:
+            Ans = Matrix(f"{A.num_rows} 1")
+            Ans[A.num_rows, 1] = b[order[A.num_rows - 1] + 1, 1] / A[order[A.num_rows - 1] + 1, A.num_columns]
+
+            for i in range(A.num_rows - 2, -1, -1):
+                value = 0
+
+                for j in range(A.num_columns, i + 1, -1):
+                    value += A[order[i] + 1, j] * Ans[j, 1]
+
+                Ans[i + 1, 1] = (b[order[i] + 1, 1] - value) / A[order[i] + 1, i + 1]
+
+            basis = []
+            basis.append(Ans)
+
+        else:
+            null_on_diag = []
+            last_ind = A.num_rows
+            for i in range(mn_null_row - 1, -1, -1):
+                for j in range(i, last_ind):
+                    if round(A[order[i] + 1, j + 1], A.accuracy) != 0.0:
+                        for k in range(j + 2, last_ind + 1):
+                            null_on_diag.append(k - 1)
+                        last_ind = j
+                        break
+
+            basis = []
+            for i in range(amt_null_rows):
+                basis.append(Matrix(f"{A.num_rows} 1"))
+
+            j = 0
+            for i in null_on_diag:
+                basis[j][i + 1, 1] = 1
+                j += 1
+
+            for k in range(amt_null_rows):
+                for i in range(null_on_diag[k] - 1, -1, -1):
+                    if i in null_on_diag:
+                        continue
+
+                    first_not_null = A.num_columns
+                    for j in range(i, A.num_columns):
+                        if round(A[order[i] + 1, j + 1]) != 0.0:
+                            first_not_null = j
+                            break
+
+                    value = 0
+                    for j in range(A.num_columns - 1, first_not_null, -1):
+                        value += A[order[i] + 1, j + 1] * basis[k][j + 1, 1]
+
+                    if value != 0:
+                        basis[k][i + 1, 1] = (-value) / A[order[i] + 1, first_not_null + 1]
+
+        return basis
 
     def find_eigenvectors(covariance_matrix: 'Matrix', eigenvalues: List[float]) -> Dict[float, List['Matrix']]:
         """
@@ -262,6 +365,7 @@ class PCA:
         covariance_matrix = PCA.covariance_matrix(centered_X)
         eigenvalues = [0, 0.0001259685, 0.0236764174, 302.3489186721, 389.8680825373, 1513.9050431088, 63252.0450021848]
         eigenvectors = PCA.find_eigenvectors(covariance_matrix, eigenvalues)
+
         components = Matrix(f"{X.num_columns} {k}")
         count = 0
         for eigenvalue in sorted(eigenvalues, reverse=True):
@@ -273,8 +377,10 @@ class PCA:
                 count += 1
                 if count == k:
                     break
+
         projection = centered_X * components
         variance = PCA.explained_variance_ratio(eigenvalues, k)
+
         return projection, components, variance
 
     def plot_pca_projection(X_proj: 'Matrix') -> Figure:
@@ -286,6 +392,7 @@ class PCA:
         """
         x = [X_proj[i, 1] for i in range(1, X_proj.num_rows + 1)]
         y = [X_proj[i, 2] for i in range(1, X_proj.num_rows + 1)]
+
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.scatter(x, y, s=30, color='steelblue', alpha=0.7, edgecolors='k', linewidths=0.5)
         for i in range(len(x)):
@@ -295,6 +402,7 @@ class PCA:
         ax.set_ylabel("Главная компонента 2", fontsize=12)
         ax.grid(True)
         ax.set_aspect('equal', adjustable='box')
+
         return fig
 
     def reconstruction(projection: 'Matrix', components: 'Matrix', mean_vector: 'Matrix') -> 'Matrix':
@@ -310,19 +418,22 @@ class PCA:
         for i in range(1, X_recon.num_rows + 1):
             for j in range(1, X_recon.num_columns + 1):
                 X_recon[i, j] += mean_vector[j, 1]
+
         return X_recon
 
     def reconstruction_error(X_orig: 'Matrix', X_recon: 'Matrix') -> float:
         """
-        Вход:
-        X_orig: Исходная матрица
-        X_recon: Восстановленная матрица
-        Выход: Среднеквадратичная ошибка между X_orig и X_recon
+        Вычисляет ошибку восстановления между оригинальной и восстановленной матрицами.
+
+        :param X_orig: Оригинальная матрица.
+        :param X_recon: Восстановленная матрица.
+        :return: Ошибка восстановления (MAE).
         """
         error = 0
         for i in range(1, X_orig.num_rows + 1):
             for j in range(1, X_orig.num_columns + 1):
                 error += (X_orig[i, j] - X_recon[i, j]) ** 2
+
         return error / (X_orig.num_rows * X_orig.num_columns)
 
     def auto_select_k(eigenvalues: List[float], threshold: float = 0.95) -> int:
@@ -333,7 +444,6 @@ class PCA:
         :param threshold: Порог для объясненной дисперсии.
         :return: Выбранное количество компонент k.
         """
-
         l = 0
         r = len(eigenvalues)
         while l < r:
@@ -342,6 +452,7 @@ class PCA:
                 r = m
             else:
                 l = m + 1
+
         return l + 1
 
     def handle_missing_values(dataset: str) -> 'Matrix':
@@ -396,19 +507,29 @@ class PCA:
 
         return X
 
+    def apply_pca_to_dataset(dataset_name: str, k: int) -> Tuple['Matrix', float]:
+        """
+        Применяет PCA к заданному набору данных и возвращает проекцию и ошибку.
 
-def apply_pca_to_dataset(dataset_name: str, k: int) -> Tuple['Matrix', float]:
-    """
-    Применяет PCA к заданному набору данных и возвращает проекцию и ошибку.
+        :param dataset_name: Имя набора данных.
+        :param k: Количество компонент.
+        :return: Проекция и ошибка восстановления.
+        """
+        file = open(f"tests/{dataset_name}.txt", "r")
+        ds = file.read()
+        file.close()
 
-    :param dataset_name: Имя набора данных.
-    :param k: Количество компонент.
-    :return: Проекция и ошибка восстановления.
-    """
-    file = open(f"tests/{dataset_name}.txt", "r")
-    ds = file.read()
-    file.close()
-    X = PCA.handle_missing_values(ds)
+        X = PCA.handle_missing_values(ds)
+        X = PCA.center_data(X)
+        X = PCA.covariance_matrix(X)
+
+        projection, components, variance = PCA.RSA(X, k)
+        mean_vector = PCA.mean_vector(X)
+
+        reconstructed_X = PCA.reconstruction(projection, components, mean_vector)
+        error = PCA.reconstruction_error(X, reconstructed_X)
+
+        return projection, error
 
 
 if __name__ == '__main__':
