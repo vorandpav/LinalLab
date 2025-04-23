@@ -66,7 +66,7 @@ class PCA:
     def find_eigenvalues(covariance_matrix: 'Matrix',
                          tolerance: Optional[float] = 1e-10,
                          intial_num_intervals: Optional[int] = 10,
-                         max_num_intervals: Optional[int] = 1000) -> List[float]:
+                         max_num_intervals: Optional[int] = 100) -> List[float]:
         """
         Вычисление собственных значений ковариационной матрицы.
 
@@ -134,6 +134,7 @@ class PCA:
                             if abs(high - low) < tolerance / 10:
                                 eigenvalues.append(round(eigenvalue, int(math.log10(1 / tolerance))))
                                 eigenvalues.sort()
+                                print(len(eigenvalues))
                                 break
                             if characteristic_value > 0:
                                 high = eigenvalue
@@ -467,6 +468,9 @@ class PCA:
         noisy_covariance_matrix = PCA.covariance_matrix(noisy_centred_X)
         noisy_eigenvalues = PCA.find_eigenvalues(noisy_covariance_matrix)
         noisy_eigenvectors = PCA.find_eigenvectors(noisy_covariance_matrix, noisy_eigenvalues)
+        for noisy_eigenvalue in noisy_eigenvectors.keys():
+            noisy_eigenvectors[noisy_eigenvalue] = [vector.norm_vector() for vector in
+                                                    noisy_eigenvectors[noisy_eigenvalue]]
         noisy_eigenvectors_count = sum([len(v) for v in noisy_eigenvectors.values()])
         noisy_mean_vector = PCA.mean_vector(noisy_X)
 
@@ -474,6 +478,8 @@ class PCA:
         covariance_matrix = PCA.covariance_matrix(centered_X)
         eigenvalues = PCA.find_eigenvalues(covariance_matrix)
         eigenvectors = PCA.find_eigenvectors(covariance_matrix, eigenvalues)
+        for eigenvalue in eigenvectors.keys():
+            eigenvectors[eigenvalue] = [vector.norm_vector() for vector in eigenvectors[eigenvalue]]
         eigenvectors_count = sum([len(v) for v in eigenvectors.values()])
         mean_vector = PCA.mean_vector(X)
 
@@ -505,6 +511,7 @@ class PCA:
         ds = file.read()
         file.close()
         X = PCA.handle_missing_values(ds)
+        print(1)
 
         projection, components, variance = PCA.RSA(X, k)
         mean_vector = PCA.mean_vector(X)
@@ -542,18 +549,11 @@ if __name__ == '__main__':
         "45 95 95 45 2 4 54.5643 3.5\n"
         "777 33 43.2 45.4 2 4 54.556 3.5\n"
         "2.1 2.3 6.5 4.5 2 4 54.5 3.5564\n")
-    projection, components, variance = PCA.RSA(m, 2)
-    mean_vector = PCA.mean_vector(m)
-    reconstructed_m = PCA.reconstruction(projection, components, mean_vector)
-
-    error = PCA.reconstruction_error(m, reconstructed_m)
-    print(error)
+    # projection, components, variance = PCA.RSA(m, 4)
+    # mean_vector = PCA.mean_vector(m)
+    # reconstructed_m = PCA.reconstruction(projection, components, mean_vector)
     #
-    # for i in range(len(eigenvalues)):
-    #     print(PCA.explained_variance_ratio(eigenvalues, i + 1))
-    #
-    # print()
-    # print(PCA.auto_select_k(eigenvalues, 0.9895))
-    # projection, error = PCA.apply_pca_to_dataset('mytest', 2)
-    #
+    # error = PCA.reconstruction_error(m, reconstructed_m)
     # print(error)
+    #
+    PCA.add_noise_and_compare(m, 0.1)
