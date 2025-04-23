@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple, Optional
 from matrix import Matrix
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
+from decimal import Decimal, getcontext
 
 
 class PCA:
@@ -163,7 +164,6 @@ class PCA:
         order = list(range(A.num_rows))
 
         for i in range(A.num_rows - 1):
-
             max_value = 0.0
             col = i - 1
             while round(abs(max_value), A.accuracy) == 0.0 and col != A.num_rows:
@@ -189,19 +189,20 @@ class PCA:
                     A[order[j] + 1, k + 1] -= factor * A[order[i] + 1, k + 1]
 
                 b[order[j] + 1, 1] -= factor * b[order[i] + 1, 1]
-
+                
+        A.accuracy = 5
         amt_null_rows = 0
         mn_null_row = A.num_rows
         for i in range(A.num_rows):
             flag_null_row = True
             for j in range(i, A.num_columns):
-                if A[order[i] + 1, j + 1] != 0:
+                if round(A[order[i] + 1, j + 1], A.accuracy) != 0.0:
                     flag_null_row = False
                     break
             if flag_null_row:
                 mn_null_row = min(i, mn_null_row)
                 amt_null_rows += 1
-
+                
         if amt_null_rows == 0:
             Ans = Matrix(f"{A.num_rows} 1")
             Ans[A.num_rows, 1] = b[order[A.num_rows - 1] + 1, 1] / A[order[A.num_rows - 1] + 1, A.num_columns]
@@ -257,7 +258,7 @@ class PCA:
 
         return basis
 
-    def find_eigenvectors(covariance_matrix: 'Matrix', eigenvalues: List[float]) -> Dict[float, List['Matrix']]:
+    def find_eigenvectors(C: 'Matrix', eigenvalues: List[float]) -> Dict[float, List['Matrix']]:
         """
         Находит собственные векторы для заданной ковариационной матрицы и собственных значений.
 
@@ -265,94 +266,17 @@ class PCA:
         :param eigenvalues: Собственные значения.
         :return: Словарь собственных значений и соответствующих им собственных векторов.
         """
-        return {0.0: [Matrix("8 1\n"
-                             "100\n"
-                             "-7.063208309940003e-05\n"
-                             "-0.0007373686226949374\n"
-                             "-0.0028553520286926483\n"
-                             "-0.005509367711061714\n"
-                             "0.016482907294020317\n"
-                             "-0.9998446173771083\n"
-                             "0.0\n"
-                             "0.0"),
-                      Matrix("8 1\n"
-                             "100\n"
-                             "-1.4133046781909452e-05\n"
-                             "-0.0003015522388324605\n"
-                             "0.0002486957043893085\n"
-                             "0.00036546166926806694\n"
-                             "-0.9998639578805091\n"
-                             "-0.016485726742935476\n"
-                             "0.0\n"
-                             "0.0")],
-                0.0001259685: [
-                    Matrix("8 1\n"
-                           "100\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "1.0\n"
-                           "0.0")],
-                0.0236764174: [
-                    Matrix("8 1\n"
-                           "100\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "0.0\n"
-                           "1.0")],
-                302.3489186721: [
-                    Matrix("8 1\n"
-                           "100\n"
-                           "-0.011828147994806387\n"
-                           "0.42565795040381627\n"
-                           "-0.785291130289884\n"
-                           "-0.44941473056540604\n"
-                           "-0.0005602921848373455\n"
-                           "0.004396690182656163\n"
-                           "0.0\n"
-                           "0.0")],
-                389.8680825373: [
-                    Matrix("8 1\n"
-                           "100\n"
-                           "0.010243878689880572\n"
-                           "0.41116777538054816\n"
-                           "0.6102214110056607\n"
-                           "-0.6770990093111336\n"
-                           "-0.00024756170372711405\n"
-                           "0.0016802652599153046\n"
-                           "0.0\n"
-                           "0.0")],
-                1513.9050431088: [
-                    Matrix("8 1\n"
-                           "100\n"
-                           "0.009852305542158832\n"
-                           "0.8060428293045205\n"
-                           "0.10327254832041716\n"
-                           "0.5826798936574683\n"
-                           "6.302281453155613e-05\n"
-                           "-0.004099722078457816\n"
-                           "0.0\n"
-                           "0.0")],
-                63252.0450021848: [
-                    Matrix("8 1\n"
-                           "100\n"
-                           "0.9998290277598816\n"
-                           "-0.007119861456414689\n"
-                           "-0.016560075994480443\n"
-                           "-0.004121452804387719\n"
-                           "-1.7682072004260486e-05\n"
-                           "4.330622001062463e-06\n"
-                           "0.0\n"
-                           "0.0")]
-                }
-
+        eigenvectors = {}
+        b = Matrix(f"{C.num_rows} 1")
+        I = Matrix.eye(C.num_rows)
+        
+        for eigenvalue in eigenvalues:
+            A = C - (float(eigenvalue) * I)
+            eigenvectors[eigenvalue] = PCA.gauss_solver(A, b)
+        
+        return eigenvectors
+        
+        
     def RSA(X: 'Matrix', k: int) -> Tuple['Matrix', 'Matrix', float]:
         """
         Полный алгоритм PCA.

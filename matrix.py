@@ -355,6 +355,18 @@ class Matrix:
 
     def __str__(self) -> str:
         return '\n'.join([' '.join(map(str, row)) for row in self.get_list()])
+    
+    @classmethod
+    def eye(cls, size: int, accuracy: int = 100):
+        input_lines = [f"{size} {size}", f"{accuracy}"]
+        for i in range(size):
+            row = ['0'] * size
+            row[i] = '1'
+            input_lines.append(' '.join(row))
+        input_string = '\n'.join(input_lines)
+        
+        return cls(input_string)
+    
 
 
 if __name__ == '__main__':
