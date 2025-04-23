@@ -356,6 +356,28 @@ class Matrix:
     def __str__(self) -> str:
         return '\n'.join([' '.join(map(str, row)) for row in self.get_list()])
 
+    def norm_vector(self) -> 'Matrix':
+        length = 0
+        for i in range(self.num_rows):
+            length += self[i + 1, 1] ** 2
+        length = length ** 0.5
+        if length == 0:
+            raise Exception('Zero vector')
+        result_vector = deepcopy(self)
+        for i in range(self.num_rows):
+            result_vector[i + 1, 1] = round(result_vector[i + 1, 1] / length, self.accuracy)
+        return result_vector
+
+    def eye(size: int, accuracy: int = 100):
+        input_lines = [f"{size} {size}", f"{accuracy}"]
+        for i in range(size):
+            row = ['0'] * size
+            row[i] = '1'
+            input_lines.append(' '.join(row))
+        input_string = '\n'.join(input_lines)
+
+        return Matrix(input_string)
+
 
 if __name__ == '__main__':
     m = Matrix("3 3\n"
