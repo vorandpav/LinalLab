@@ -558,4 +558,4 @@ if __name__ == '__main__':
     # projection, error = PCA.apply_pca_to_dataset('pokemon', 3)
     # print(error)
 
-    PCA.add_noise_and_compare(m, 0.1)
+    # PCA.add_noise_and_compare(m, 0.1)
