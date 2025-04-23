@@ -65,14 +65,14 @@ class PCA:
 
     def find_eigenvalues(covariance_matrix: 'Matrix',
                          tolerance: Optional[float] = 1e-10,
-                         intial_num_intervals: Optional[int] = 10,
+                         initial_num_intervals: Optional[int] = 10,
                          max_num_intervals: Optional[int] = 100) -> List[float]:
         """
         Вычисление собственных значений ковариационной матрицы.
 
         :param covariance_matrix: Ковариационная матрица.
         :param tolerance: Допустимая погрешность для вычисления собственных значений.
-        :param intial_num_intervals: Изначальное число интервалов для поиска на разбиении.
+        :param initial_num_intervals: Изначальное число интервалов для поиска на разбиении.
         :param max_num_intervals: Максимальное число интервалов для поиска на разбиении.
         :return: Собственные значения.
 
@@ -88,19 +88,20 @@ class PCA:
         one_eigenvalue = abs(PCA.characteristic_polynomial_value(matrix, 1)) < tolerance
         eigenvalues.append(1)
 
-        num_intervals = intial_num_intervals
+        num_intervals = initial_num_intervals
 
         while len(eigenvalues) - 1 != matrix.num_rows - zero_eigenvalue and num_intervals <= max_num_intervals:
-            for interval_index in range(len(eigenvalues) + 1):
+            current_eigenvalues = deepcopy(eigenvalues)
+            for interval_index in range(len(current_eigenvalues) + 1):
                 if interval_index == 0:
                     lower_bound = tolerance
-                    higher_bound = eigenvalues[0] - tolerance
-                elif interval_index == len(eigenvalues):
-                    lower_bound = eigenvalues[-1] + tolerance
+                    higher_bound = current_eigenvalues[0] - tolerance
+                elif interval_index == len(current_eigenvalues):
+                    lower_bound = current_eigenvalues[-1] + tolerance
                     higher_bound = matrix.get_tracer() + tolerance
                 else:
-                    lower_bound = eigenvalues[interval_index - 1] + tolerance
-                    higher_bound = eigenvalues[interval_index] - tolerance
+                    lower_bound = current_eigenvalues[interval_index - 1] + tolerance
+                    higher_bound = current_eigenvalues[interval_index] - tolerance
                 if higher_bound - lower_bound < tolerance:
                     continue
 
@@ -131,10 +132,9 @@ class PCA:
                         eigenvalue = (low + high) / 2
                         while True:
                             characteristic_value = PCA.characteristic_polynomial_value(matrix, eigenvalue)
-                            if abs(high - low) < tolerance / 10:
+                            if abs(high - low) < tolerance:
                                 eigenvalues.append(round(eigenvalue, int(math.log10(1 / tolerance))))
                                 eigenvalues.sort()
-                                print(len(eigenvalues))
                                 break
                             if characteristic_value > 0:
                                 high = eigenvalue
@@ -511,7 +511,6 @@ class PCA:
         ds = file.read()
         file.close()
         X = PCA.handle_missing_values(ds)
-        print(1)
 
         projection, components, variance = PCA.RSA(X, k)
         mean_vector = PCA.mean_vector(X)
@@ -555,5 +554,8 @@ if __name__ == '__main__':
     #
     # error = PCA.reconstruction_error(m, reconstructed_m)
     # print(error)
-    #
+
+    # projection, error = PCA.apply_pca_to_dataset('pokemon', 3)
+    # print(error)
+
     PCA.add_noise_and_compare(m, 0.1)

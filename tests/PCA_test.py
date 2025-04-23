@@ -235,7 +235,10 @@ class MyTestCase(unittest.TestCase):
                 m = Matrix(self.matrices[test])
                 centered_m = PCA.center_data(m)
                 cov_m = PCA.covariance_matrix(centered_m)
-                eigenvalues = PCA.find_eigenvalues(cov_m)
+                if test == 1:
+                    eigenvalues = PCA.find_eigenvalues(cov_m, max_num_intervals=1000)
+                else:
+                    eigenvalues = PCA.find_eigenvalues(cov_m, max_num_intervals=100)
                 for i in range(len(eigenvalues)):
                     self.assertAlmostEqual(eigenvalues[i], self.eigenvalues[test][i], 6)
 
